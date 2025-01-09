@@ -6,18 +6,10 @@
 
 const std = @import("std");
 
-pub fn build(b: *std.build.Builder) !void {
-    // I am creating an executable. This will generate an ELF executable, which
-    // the Raspberry Pi bootloader cannot run directly. Later it will be
-    // converted to something more appropriate to our needs.
-    const exe = b.addExecutable("simplest", "src/main.zig");
-
-    // I want an optimized build.
-    exe.setBuildMode(std.builtin.Mode.ReleaseFast);
-
+pub fn build(b: *std.Build) !void {
     // Configure the target. The target tells the compiler details about the
     // hardware and software that going to run the program.
-    const target = .{
+    const target = b.resolveTargetQuery(.{
         // The Pi 3 has an ARM CPU, so I set it to `arm`. In fact, I think I
         // could have used `aarch64` here, since it is a 64-bit CPU, but using
         // it in 32-bit mode seemed simpler (because I recently did a similar
@@ -52,32 +44,40 @@ pub fn build(b: *std.build.Builder) !void {
         // anything about the ability to use the FPU. It's OK to use `eabi` and
         // still use the FPU to do the actual calculations.)
         .abi = .eabihf,
-    };
+    });
 
-    exe.setTarget(target);
+    // I am creating an executable. This will generate an ELF executable, which
+    // the Raspberry Pi bootloader cannot run directly. Later it will be
+    // converted to something more appropriate to our needs.
+    const exe = b.addExecutable(.{
+        .name = "simplest",
+        .target = target,
+        .root_source_file = b.path("src/main.zig"),
+        .optimize = .ReleaseFast,
+    });
 
     // I need be sure that the program's entry point is placed at the very start
     // of the binary image. Additionally, I want to discard several sections
     // from the generated ELF that the compiler tries to add. I use a linker
     // script to do that. See `simplest.ld` for details.
-    exe.setLinkerScriptPath(std.build.FileSource{
-        .path = "simplest.ld",
-    });
+    exe.setLinkerScriptPath(b.path("simplest.ld"));
 
     // This says that the ELF executable will be copied to `zig-out/bin/` as
     // part of the `install` step. The `dump-elf` (defined below) step will need
     // this. (Not sure I understand this correctly, but here I go: if I omit
     // this line, the build system can assume that I am not interested in the
     // executable, so it will not be placed under `zig-out`.)
-    exe.install();
+    b.installArtifact(exe);
 
-    // With `addInstallRaw()` I tell the build system that I want to generate a
+    // With `format = .bin` I tell the build system that I want to generate a
     // raw binary image from the ELF executable we generated above. This is the
     // binary the Pi 3 can run. I make this "bin generation step" a dependency
     // of the default "install step" so that it gets executed on a regular
     // `zig build`.
-    const bin = b.addInstallRaw(exe, "kernel7.img", .{});
+    const bin = exe.addObjCopy(.{ .format = .bin });
     b.getInstallStep().dependOn(&bin.step);
+    const img = b.addInstallFile(bin.getOutput(), "bin/kernel7.img");
+    b.getInstallStep().dependOn(&img.step);
 
     // Here I add a step to disassemble the intermediate ELF executable. Handy
     // to troubleshoot issues with the  linker script. Note how I say that this
@@ -91,7 +91,7 @@ pub fn build(b: *std.build.Builder) !void {
         "arm",
         b.getInstallPath(.{ .custom = "bin" }, exe.out_filename),
     });
-    dumpELFCommand.step.dependOn(b.getInstallStep());
+    dumpELFCommand.step.dependOn(&bin.step);
     const dumpELFStep = b.step("dump-elf", "Disassemble the ELF executable");
     dumpELFStep.dependOn(&dumpELFCommand.step);
 
@@ -105,8 +105,8 @@ pub fn build(b: *std.build.Builder) !void {
         "arm",
         "-b",
         "binary",
-        b.getInstallPath(bin.dest_dir, bin.dest_filename),
     });
+    dumpBinCommand.addFileArg(bin.getOutput());
     dumpBinCommand.step.dependOn(&bin.step);
     const dumpBinStep = b.step("dump-bin", "Disassemble the raw binary image");
     dumpBinStep.dependOn(&dumpBinCommand.step);

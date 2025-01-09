@@ -8,9 +8,9 @@
 // are marked as `volatile` to let the compiler know that accessing these
 // addresses has side effects (and therefore these accesses will not be
 // reordered or optimized away -- a property I'll explicitly make use of below).
-const GPFSEL1 = @intToPtr(*volatile u32, 0x3F20_0004);
-const GPSET0 = @intToPtr(*volatile u32, 0x3F20_001C);
-const GPCLR0 = @intToPtr(*volatile u32, 0x3F20_0028);
+const GPFSEL1: *volatile u32 = @ptrFromInt(0x3F20_0004);
+const GPSET0: *volatile u32 = @ptrFromInt(0x3F20_001C);
+const GPCLR0: *volatile u32 = @ptrFromInt(0x3F20_0028);
 
 // This is the real entry point for our program, and the only part of it in
 // assembly. That's just one instruction! It simply jumps (or branches, using
