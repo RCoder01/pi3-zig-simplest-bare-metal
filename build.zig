@@ -76,6 +76,9 @@ pub fn build(b: *std.Build) !void {
     // `zig build`.
     const bin = exe.addObjCopy(.{ .format = .bin });
     b.getInstallStep().dependOn(&bin.step);
+
+    // addInstallBinFile is here for a similar reason to installArtifact.
+    // It says that I want to copy the bin file to `zig-out/bin/kernel7.img`
     const img = b.addInstallBinFile(bin.getOutput(), "kernel7.img");
     b.getInstallStep().dependOn(&img.step);
 
