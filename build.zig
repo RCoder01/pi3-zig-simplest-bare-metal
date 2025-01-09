@@ -76,7 +76,7 @@ pub fn build(b: *std.Build) !void {
     // `zig build`.
     const bin = exe.addObjCopy(.{ .format = .bin });
     b.getInstallStep().dependOn(&bin.step);
-    const img = b.addInstallFile(bin.getOutput(), "bin/kernel7.img");
+    const img = b.addInstallBinFile(bin.getOutput(), "kernel7.img");
     b.getInstallStep().dependOn(&img.step);
 
     // Here I add a step to disassemble the intermediate ELF executable. Handy
@@ -89,9 +89,9 @@ pub fn build(b: *std.Build) !void {
         "-D",
         "-m",
         "arm",
-        b.getInstallPath(.{ .custom = "bin" }, exe.out_filename),
+        b.getInstallPath(.bin, exe.out_filename),
     });
-    dumpELFCommand.step.dependOn(&bin.step);
+    dumpELFCommand.step.dependOn(b.getInstallStep());
     const dumpELFStep = b.step("dump-elf", "Disassemble the ELF executable");
     dumpELFStep.dependOn(&dumpELFCommand.step);
 
@@ -105,9 +105,9 @@ pub fn build(b: *std.Build) !void {
         "arm",
         "-b",
         "binary",
+        b.getInstallPath(img.dir, img.dest_rel_path),
     });
-    dumpBinCommand.addFileArg(bin.getOutput());
-    dumpBinCommand.step.dependOn(&bin.step);
+    dumpBinCommand.step.dependOn(b.getInstallStep());
     const dumpBinStep = b.step("dump-bin", "Disassemble the raw binary image");
     dumpBinStep.dependOn(&dumpBinCommand.step);
 }
