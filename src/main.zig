@@ -61,15 +61,13 @@ export fn simplestMain() noreturn {
         // while. Anyway, looping idly for a while is easy to understand and
         // works well-enough, especially considering I am targeting a specific
         // hardware.
-        var i: u32 = 2_500_000;
-        while (i > 0) {
+        for (0..2_500_000) |_| {
             // This assignment is effectively a no-op, as I already configured
             // the GPFSEL1 register above. However, it has a reason for being
             // here: since `GPFSEL1` is marked as `volatile`, the compiler will
             // assume this assignment has side effects. Without this, this whole
             // loop would be removed by the compiler optimizer.
             GPFSEL1.* = 0x0004_0000;
-            i -= 1;
         }
 
         ledON = !ledON;

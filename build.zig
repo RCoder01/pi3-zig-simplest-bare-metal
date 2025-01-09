@@ -107,7 +107,7 @@ pub fn build(b: *std.Build) !void {
         "binary",
         b.getInstallPath(img.dir, img.dest_rel_path),
     });
-    dumpBinCommand.step.dependOn(b.getInstallStep());
+    dumpBinCommand.step.dependOn(&img.step);
     const dumpBinStep = b.step("dump-bin", "Disassemble the raw binary image");
     dumpBinStep.dependOn(&dumpBinCommand.step);
 }
